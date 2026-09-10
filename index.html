@@ -351,7 +351,7 @@
     <div class="section-head">
       <div>
         <h2>Discom &amp; Zone summary</h2>
-        <p>Final mapping: only approved UPPCL zones are shown. HQ and Other office are additional buckets. Office codes are resolved through SDO/DIV/CIR/ZNE hierarchy; SD0 is treated as SDO; KV is KESCO; long numeric office codes and clear zone names are also used where safe.</p>
+        <p>Final mapping: only approved UPPCL zones are shown. HQ and other office (ZAO, Store, Workshop etc)are additional buckets. Office codes are resolved through SDO/DIV/CIR/ZNE hierarchy; SD0 is treated as SDO; KV is KESCO; long numeric office codes and clear zone names are also used where safe.</p>
       </div>
       <div class="section-actions">
         <input type="text" class="search" id="pivotSearch" placeholder="Filter discom or zone…">
@@ -523,7 +523,7 @@ function numericZoneInference(text, preferredDc){
 
 function namedZoneInference(text, preferredDc){
   // Only use clear, approved zone names; ambiguous duplicate-code zones are
-  // intentionally left for Other office unless the name resolves them.
+  // intentionally left for other office (ZAO, Store, Workshop etc)unless the name resolves them.
   const vals=(O.canonicalZones||[]).filter(x=>!preferredDc || x.prefix===preferredDc);
   const hits=[];
   for(const v of vals){
@@ -610,7 +610,7 @@ function classify(raw){
 
   // We know the DISCOM from an authoritative FL L1 prefix, but no approved
   // zone could be established. Per the final rule, send it to that DISCOM's
-  // Other office bucket rather than leaving it as globally unmatched.
+  // other office (ZAO, Store, Workshop etc)bucket rather than leaving it as globally unmatched.
   if(dc) return {dc,tier:"C",zone:null,zoneCode:null,reason:reason+"; zone not identified → Other office"};
 
   // If exact hierarchy gave us the DISCOM but no zone, retain it for review.
@@ -697,11 +697,11 @@ function render(){
   });
 
   const extraZones={
-    KE:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
-    PV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
-    DV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
-    MV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
-    PU:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}]
+    KE:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
+    PV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
+    DV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
+    MV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
+    PU:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}]
   };
 
   pivotTable.innerHTML="";

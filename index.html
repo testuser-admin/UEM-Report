@@ -351,7 +351,7 @@
     <div class="section-head">
       <div>
         <h2>Discom &amp; Zone summary</h2>
-        <p>Final mapping: only approved UPPCL zones are shown. HQ and other office (ZAO, Store, Workshop etc)are additional buckets. Office codes are resolved through SDO/DIV/CIR/ZNE hierarchy; SD0 is treated as SDO; KV is KESCO; long numeric office codes and clear zone names are also used where safe.</p>
+        <p>Final mapping: only approved UPPCL zones are shown. HQ and Other office are additional buckets. Office codes are resolved through SDO/DIV/CIR/ZNE hierarchy; SD0 is treated as SDO; KV is KESCO; long numeric office codes and clear zone names are also used where safe.</p>
       </div>
       <div class="section-actions">
         <input type="text" class="search" id="pivotSearch" placeholder="Filter discom or zone…">
@@ -359,6 +359,10 @@
         <button class="ghost-btn" id="downloadSummaryBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
           Download zone summary CSV
+        </button>
+        <button class="ghost-btn" id="exportPdfBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l5 5v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z"/><path d="M14 2v6h6"/></svg>
+          Export PDF report
         </button>
       </div>
     </div>
@@ -523,7 +527,7 @@ function numericZoneInference(text, preferredDc){
 
 function namedZoneInference(text, preferredDc){
   // Only use clear, approved zone names; ambiguous duplicate-code zones are
-  // intentionally left for other office (ZAO, Store, Workshop etc)unless the name resolves them.
+  // intentionally left for Other office unless the name resolves them.
   const vals=(O.canonicalZones||[]).filter(x=>!preferredDc || x.prefix===preferredDc);
   const hits=[];
   for(const v of vals){
@@ -610,7 +614,7 @@ function classify(raw){
 
   // We know the DISCOM from an authoritative FL L1 prefix, but no approved
   // zone could be established. Per the final rule, send it to that DISCOM's
-  // other office (ZAO, Store, Workshop etc)bucket rather than leaving it as globally unmatched.
+  // Other office bucket rather than leaving it as globally unmatched.
   if(dc) return {dc,tier:"C",zone:null,zoneCode:null,reason:reason+"; zone not identified → Other office"};
 
   // If exact hierarchy gave us the DISCOM but no zone, retain it for review.
@@ -697,11 +701,11 @@ function render(){
   });
 
   const extraZones={
-    KE:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
-    PV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
-    DV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
-    MV:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}],
-    PU:[{zone:"HQ & other office (ZAO, Store, Workshop etc)",code:"HQ_OTHER",kind:"combined"}]
+    KE:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
+    PV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
+    DV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
+    MV:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}],
+    PU:[{zone:"HQ & Other offices",code:"HQ_OTHER",kind:"combined"}]
   };
 
   pivotTable.innerHTML="";
@@ -836,6 +840,121 @@ downloadDetailBtn.onclick=()=>{
   rows.forEach(r=>x.push([r.name,FULL[r.dc]||r.dc||"",r.zone||"",r.zoneCode||"",r.zone?(r.tier==="B"?"HQ":"Zone identified"):(r.tier==="B"?"HQ":"Other office"),r.reason].map(cell).join(",")));
   dl(x.join("\n"),"device_discom_zone_detail.csv");
 };
+exportPdfBtn.onclick=function(){
+  if(!rows.length){alert("Upload a device report first.");return}
+  generatePdfReport();
+};
+
+function generatePdfReport(){
+  const dcOrder=["DV","PV","MV","PU","KE"];
+  const unmatched=rows.filter(r=>!r.dc).length;
+  const uppclHQ=rows.filter(r=>r.dc==="UP"&&r.tier==="B").length;
+
+  const grouped={};
+  (O.canonicalZones||[]).forEach(z=>{
+    grouped[z.prefix]??=[];
+    if(!grouped[z.prefix].some(x=>x.zone===z.zone&&x.code===z.code)) grouped[z.prefix].push(z);
+  });
+
+  // Count rows of actual table content to decide column layout / font size
+  let zoneRowCount=0;
+  dcOrder.forEach(dc=>{ zoneRowCount += (grouped[dc]||[]).length + 2; }); // +2 for HQ&Other row + Discom Total row
+  if(uppclHQ) zoneRowCount+=1;
+
+  let colCount=2, fontPx=12, padY=2.2;
+  if(zoneRowCount>40){colCount=3;fontPx=11.2;padY=1.8}
+  if(zoneRowCount>60){colCount=3;fontPx=10.2;padY=1.4}
+
+  let overallTotal=0;
+
+  const blocks=dcOrder.map(dc=>{
+    const dcZones=grouped[dc]||[];
+    const direct=rows.filter(r=>r.dc===dc).length;
+    if(!direct && !dcZones.length) return "";
+    const hq=rows.filter(r=>r.dc===dc&&r.tier==="B").length;
+    const other=rows.filter(r=>r.dc===dc&&!r.zone&&r.tier!=="B").length;
+    overallTotal+=direct;
+
+    let zoneRows="";
+    dcZones.forEach(z=>{
+      const n=zoneCountFor(dc,z);
+      zoneRows+='<tr><td class="zc">'+esc(z.zone)+'</td><td class="nn">'+n.toLocaleString()+'</td></tr>';
+    });
+    zoneRows+='<tr class="sub"><td class="zc">HQ &amp; Other offices</td><td class="nn">'+(hq+other).toLocaleString()+'</td></tr>';
+    zoneRows+='<tr class="totalrow"><td class="zc">'+esc(FULL[dc]||dc)+' Total</td><td class="nn">'+direct.toLocaleString()+'</td></tr>';
+
+    return '<div class="dblock">'
+      +'<table class="dtable">'
+      +'<thead><tr class="dhead"><th colspan="2">'+esc(FULL[dc]||dc)+'</th></tr>'
+      +'<tr class="colhead"><th>Zone</th><th class="nn">Systems</th></tr></thead>'
+      +'<tbody>'+zoneRows+'</tbody>'
+      +'</table>'
+      +'</div>';
+  }).join("");
+
+  let uppclBlock="";
+  if(uppclHQ){
+    overallTotal+=uppclHQ;
+    uppclBlock='<div class="dblock">'
+      +'<table class="dtable">'
+      +'<thead><tr class="dhead"><th colspan="2">UPPCL</th></tr>'
+      +'<tr class="colhead"><th>Zone</th><th class="nn">Systems</th></tr></thead>'
+      +'<tbody><tr class="totalrow"><td class="zc">UPPCL HQ Total</td><td class="nn">'+uppclHQ.toLocaleString()+'</td></tr></tbody>'
+      +'</table>'
+      +'</div>';
+  }
+
+  const grandTotal=overallTotal+unmatched;
+  const genDate=new Date();
+  const dateStr=genDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+" · "+genDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Discom & Zone Report</title><style>'
+    +'@page{size:A4;margin:9mm}'
+    +'*{box-sizing:border-box}'
+    +'html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}'
+    +'.page{width:100%}'
+    +'h1{font-size:18px;margin:0 0 2px;font-weight:700;color:#000}'
+    +'.meta{font-size:12px;color:#000;margin:0 0 8px}'
+    +'.sechead{font-size:13.5px;font-weight:700;margin:0 0 5px;border-bottom:1.4px solid #000;padding-bottom:2px;color:#000}'
+    +'.cols{column-count:'+colCount+';column-gap:9px}'
+    +'.dblock{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:8px}'
+    +'.dtable{width:100%;border-collapse:collapse;border:1px solid #000;font-size:'+fontPx+'px}'
+    +'.dtable th,.dtable td{border:0.7px solid #000;padding:'+padY+'px 4px;color:#000}'
+    +'.dhead th{background:#e2e2e2;font-weight:700;font-size:'+(fontPx+1.4)+'px;text-align:left;padding:'+(padY+0.8)+'px 4px}'
+    +'.colhead th{background:#f2f2f2;font-weight:700;text-align:left}'
+    +'.zc{text-align:left}'
+    +'.nn{text-align:right;font-variant-numeric:tabular-nums}'
+    +'tr.sub td{font-style:italic;border-top:1px solid #000}'
+    +'tr.totalrow td{font-weight:700;background:#ececec;border-top:1.2px solid #000}'
+    +'.grand{margin-top:6px;width:100%;border-collapse:collapse;border:1.4px solid #000;font-size:'+(fontPx+1.6)+'px}'
+    +'.grand td{border:0.9px solid #000;padding:'+(padY+1.4)+'px 6px;color:#000}'
+    +'.grand td:first-child{text-align:left;font-weight:600}'
+    +'.grand td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}'
+    +'.grand tr.final td{font-weight:700;background:#e2e2e2;font-size:'+(fontPx+2.2)+'px}'
+    +'.foot{margin-top:7px;font-size:10px;color:#000;border-top:0.6px solid #000;padding-top:3px}'
+    +'@media print{.cols{column-count:'+colCount+'}}'
+    +'</style></head><body><div class="page">'
+    +'<h1>Device Office Mapper — Discom &amp; Zone Report</h1>'
+    +'<div class="meta">Generated '+dateStr+'</div>'
+    +'<div class="sechead">Discom-wise &amp; Zone-wise System Count</div>'
+    +'<div class="cols">'+blocks+uppclBlock+'</div>'
+    +'<table class="grand">'
+      +'<tr><td>Overall Total (All Discoms + UPPCL HQ)</td><td>'+overallTotal.toLocaleString()+'</td></tr>'
+      +'<tr><td>Unmatched (No Discom identified)</td><td>'+unmatched.toLocaleString()+'</td></tr>'
+      +'<tr class="final"><td>Grand Total (All Devices)</td><td>'+grandTotal.toLocaleString()+'</td></tr>'
+    +'</table>'
+    +'<div class="foot">Matching performed locally in-browser from the UEM device report. Zone master fixed to the approved UPPCL list.</div>'
+    +'</div>'
+    +'<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>'
+    +'</body></html>';
+
+  const w=window.open("","_blank");
+  if(!w){alert("Please allow pop-ups to export the PDF report.");return}
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
 pivotSearch.oninput=function(){const q=this.value.toLowerCase();document.querySelectorAll(".discom-group").forEach(x=>x.style.display=x.textContent.toLowerCase().includes(q)?"":"none")};
 reviewSearch.oninput=function(){const q=this.value.toLowerCase();document.querySelectorAll(".review-item").forEach(x=>x.style.display=x.textContent.toLowerCase().includes(q)?"":"none")};
 expandAllBtn.onclick=function(){document.querySelectorAll(".discom-group").forEach(x=>x.classList.add("open"))};

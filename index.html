@@ -135,6 +135,56 @@
   }
   #resetBtn:hover{border-color:var(--ink-soft);color:var(--ink);}
 
+  /* ---------- Report mode selector ---------- */
+  .mode-select{
+    display:flex;gap:22px;flex-wrap:wrap;align-items:center;
+    padding:16px 20px;margin-bottom:16px;
+    border:1px solid var(--line);border-radius:10px;background:var(--panel);
+  }
+  .mode-option{
+    display:flex;align-items:center;gap:8px;cursor:pointer;
+    font-size:0.92rem;font-weight:600;color:var(--ink);
+  }
+  .mode-option input{width:15px;height:15px;accent-color:var(--grid-blue);cursor:pointer;}
+
+  /* ---------- Comparative dropzones ---------- */
+  .dropzone-box{
+    padding:24px 22px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    background:var(--panel);
+  }
+  .dropzone-box.drag{border-color:var(--grid-blue);background:#F1F6FC;}
+  .dropzone-box .icon{width:40px;height:40px;flex:none;border-radius:9px;background:var(--grey-bg);display:flex;align-items:center;justify-content:center;}
+  .dropzone-box .icon svg{width:20px;height:20px;stroke:var(--grid-blue);}
+  .dropzone-box .txt strong{display:block;font-size:0.92rem;margin-bottom:2px;}
+  .dropzone-box .txt span{color:var(--ink-soft);font-size:0.8rem;}
+  .dropzone-box input[type="file"]{display:none;}
+
+  .compare-label{
+    font-size:0.82rem;font-weight:650;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;
+  }
+  .compare-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px;
+  }
+  .file-meta-line{
+    margin-top:10px;font-size:0.83rem;color:var(--ink-soft);min-height:1.2em;
+  }
+  .file-meta-line b{color:var(--ink);}
+  .file-meta-line .ok{color:var(--green);font-weight:650;}
+  .compare-actions{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;}
+  .compare-status{margin-top:10px;font-size:0.83rem;color:var(--ink-soft);}
+  .browse-btn:disabled{background:var(--line);color:var(--ink-soft);cursor:not-allowed;}
+  @media (max-width:760px){
+    .compare-grid{grid-template-columns:1fr;}
+  }
+
   /* ---------- Stats strip ---------- */
   #results{display:none;}
   #results.show{display:block;}
@@ -323,10 +373,16 @@
 
 
   <div class="credit-line">
-    R&amp;D &amp; Solution Design by <strong>Saurabh Kumar Pandey</strong>Vision by <strong>Vishwa Vijay Verma</strong>
+    R&amp;D &amp; Solution Design by <strong>Saurabh Kumar Pandey</strong> Vision by <strong>Vishwa Vijay Verma</strong>
     <span>&middot;</span> Powered by <strong>ChatGPT &amp; Claude</strong>
   </div>
 
+  <div class="mode-select" id="modeSelect">
+    <label class="mode-option"><input type="radio" name="reportMode" id="modeSingle" checked> One day report</label>
+    <label class="mode-option"><input type="radio" name="reportMode" id="modeComparative"> Comparative report (previous day vs current day)</label>
+  </div>
+
+  <div id="singleModeWrap">
   <div id="dropzone">
     <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0-12 4 4m-4-4-4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
     <div class="txt">
@@ -391,6 +447,44 @@
 
     <div class="review-panel" id="reviewPanel"></div>
 
+  </div>
+
+  </div><!-- /singleModeWrap -->
+
+  <div id="comparativeModeWrap" style="display:none">
+    <div class="compare-grid">
+      <div>
+        <div class="compare-label">Previous day report</div>
+        <div class="dropzone-box" id="prevDropzone">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0-12 4 4m-4-4-4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+          <div class="txt">
+            <strong>Drop yesterday's report</strong>
+            <span>CSV export from the UEM dashboard</span>
+          </div>
+          <button type="button" class="browse-btn" id="prevBrowseBtn">Choose file</button>
+          <input type="file" id="prevFileInput" accept=".csv">
+        </div>
+        <div id="prevFileMeta" class="file-meta-line">No file selected yet.</div>
+      </div>
+      <div>
+        <div class="compare-label">Current day report</div>
+        <div class="dropzone-box" id="currDropzone">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0-12 4 4m-4-4-4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+          <div class="txt">
+            <strong>Drop today's report</strong>
+            <span>CSV export from the UEM dashboard</span>
+          </div>
+          <button type="button" class="browse-btn" id="currBrowseBtn">Choose file</button>
+          <input type="file" id="currFileInput" accept=".csv">
+        </div>
+        <div id="currFileMeta" class="file-meta-line">No file selected yet.</div>
+      </div>
+    </div>
+    <div class="compare-actions">
+      <button class="browse-btn" id="compareExportBtn" disabled>Export comparative PDF report</button>
+      <button class="ghost-btn" id="compareResetBtn">Reset both files</button>
+    </div>
+    <div id="compareStatus" class="compare-status">Upload both the previous day and current day device reports to enable the comparative PDF export.</div>
   </div>
 
 </main>
@@ -652,29 +746,111 @@ fi.onchange=e=>{if(e.target.files[0])load(e.target.files[0])};
 
 function load(file){const r=new FileReader();r.onload=e=>parseReport(e.target.result,file.name);r.readAsText(file)}
 
-function parseReport(text,name){
+// Shared parser: turns raw CSV text into classified device rows.
+// Used by both the single-file dashboard flow and the comparative flow.
+function buildRows(text){
   const matrix=parseCSV(text);
   let hi=matrix.findIndex(r=>r.some(v=>/computer\s*name/i.test(String(v))));
-  if(hi<0){alert("Could not find the Computer Name column.");return}
+  if(hi<0) return null;
   const h=matrix[hi].map(x=>String(x).trim()),ni=h.findIndex(v=>/computer\s*name/i.test(v));
-  rows=[];
   const dashboardHeaders = h.slice();
-  dashboardHeadersGlobal = dashboardHeaders.slice();
+  const outRows=[];
   for(let i=hi+1;i<matrix.length;i++){
     const raw = matrix[i] || [];
     const n=String(raw[ni]||"").trim();if(!n)continue;
     const c=classify(n);
     const originalRow = dashboardHeaders.map((_,j)=>String(raw[j]??""));
-    rows.push({
+    outRows.push({
       name:n, dc:c.dc, tier:c.tier, zone:c.zone||null, zoneCode:c.zoneCode||null,
       reason:c.reason, originalRow:originalRow
     });
   }
+  return {rows:outRows, headers:dashboardHeaders};
+}
+
+function parseReport(text,name){
+  const built=buildRows(text);
+  if(!built){alert("Could not find the Computer Name column.");return}
+  rows=built.rows;
+  dashboardHeadersGlobal=built.headers;
   fm.innerHTML="<b>"+esc(name)+"</b> · "+rows.length.toLocaleString()+" devices <button id='resetBtn' type='button'>Upload a different file</button>";
   fm.classList.add("show");
   document.getElementById("resetBtn").onclick=()=>{fm.classList.remove("show");res.classList.remove("show");fi.value=""};
   render();
 }
+
+/* ================== Report mode toggle ================== */
+const modeSingle=document.getElementById("modeSingle"),
+      modeComparative=document.getElementById("modeComparative"),
+      singleModeWrap=document.getElementById("singleModeWrap"),
+      comparativeModeWrap=document.getElementById("comparativeModeWrap");
+
+function applyMode(){
+  const comparative = modeComparative.checked;
+  singleModeWrap.style.display = comparative ? "none" : "";
+  comparativeModeWrap.style.display = comparative ? "" : "none";
+}
+modeSingle.onchange=applyMode;
+modeComparative.onchange=applyMode;
+
+/* ================== Comparative report flow ================== */
+const prevDropzone=document.getElementById("prevDropzone"), prevFileInput=document.getElementById("prevFileInput"),
+      prevBrowseBtn=document.getElementById("prevBrowseBtn"), prevFileMeta=document.getElementById("prevFileMeta"),
+      currDropzone=document.getElementById("currDropzone"), currFileInput=document.getElementById("currFileInput"),
+      currBrowseBtn=document.getElementById("currBrowseBtn"), currFileMeta=document.getElementById("currFileMeta"),
+      compareExportBtn=document.getElementById("compareExportBtn"), compareResetBtn=document.getElementById("compareResetBtn"),
+      compareStatus=document.getElementById("compareStatus");
+
+let prevRows=null, currRows=null, prevFileName="", currFileName="";
+
+function wireDropzone(zoneEl, inputEl, browseEl, onFile){
+  browseEl.onclick=e=>{e.stopPropagation();inputEl.click()};
+  zoneEl.onclick=()=>inputEl.click();
+  zoneEl.ondragover=e=>{e.preventDefault();zoneEl.classList.add("drag")};
+  zoneEl.ondragleave=()=>zoneEl.classList.remove("drag");
+  zoneEl.ondrop=e=>{e.preventDefault();zoneEl.classList.remove("drag");if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0])};
+  inputEl.onchange=e=>{if(e.target.files[0])onFile(e.target.files[0])};
+}
+
+function loadCompareFile(file, which){
+  const r=new FileReader();
+  r.onload=e=>{
+    const built=buildRows(e.target.result);
+    if(!built){alert("Could not find the Computer Name column in "+(which==="prev"?"the previous day":"the current day")+" file.");return}
+    if(which==="prev"){
+      prevRows=built.rows; prevFileName=file.name;
+      prevFileMeta.innerHTML="<span class='ok'>✓</span> <b>"+esc(file.name)+"</b> · "+prevRows.length.toLocaleString()+" devices";
+    }else{
+      currRows=built.rows; currFileName=file.name;
+      currFileMeta.innerHTML="<span class='ok'>✓</span> <b>"+esc(file.name)+"</b> · "+currRows.length.toLocaleString()+" devices";
+    }
+    updateCompareState();
+  };
+  r.readAsText(file);
+}
+wireDropzone(prevDropzone, prevFileInput, prevBrowseBtn, f=>loadCompareFile(f,"prev"));
+wireDropzone(currDropzone, currFileInput, currBrowseBtn, f=>loadCompareFile(f,"curr"));
+
+function updateCompareState(){
+  const ready = prevRows && prevRows.length && currRows && currRows.length;
+  compareExportBtn.disabled = !ready;
+  compareStatus.textContent = ready
+    ? "Both reports are loaded — ready to export the comparative PDF report."
+    : "Upload both the previous day and current day device reports to enable the comparative PDF export.";
+}
+
+compareResetBtn.onclick=()=>{
+  prevRows=null; currRows=null; prevFileName=""; currFileName="";
+  prevFileInput.value=""; currFileInput.value="";
+  prevFileMeta.textContent="No file selected yet.";
+  currFileMeta.textContent="No file selected yet.";
+  updateCompareState();
+};
+
+compareExportBtn.onclick=function(){
+  if(!prevRows || !currRows){alert("Upload both the previous day and current day device reports first.");return}
+  generateComparativePdfReport();
+};
 
 function render(){
   res.classList.add("show");
@@ -794,6 +970,16 @@ function zoneCountsGlobal(dc,z){
   return rows.filter(r=>r.dc===dc&&r.zoneCode===z.code&&r.zone===z.zone).length;
 }
 
+// Generic version of zoneCountFor that works against any rows array
+// (used to compute counts for the previous-day and current-day files
+// independently when building the comparative report).
+function zoneCountForRows(rowsArr,dc,z){
+  if(z.code==="HQ_OTHER") return rowsArr.filter(r=>r.dc===dc&&(r.tier==="B"||(r.tier!=="B"&&!r.zone))).length;
+  if(z.code==="HQ") return rowsArr.filter(r=>r.dc===dc&&r.tier==="B").length;
+  if(z.code==="OTHER") return rowsArr.filter(r=>r.dc===dc&&!r.zone&&r.tier!=="B").length;
+  return rowsArr.filter(r=>r.dc===dc&&r.zoneCode===z.code&&r.zone===z.zone).length;
+}
+
 function rowsForBucket(dc,z){
   if(z.code==="HQ_OTHER") return rows.filter(r=>r.dc===dc&&(r.tier==="B"||(r.tier!=="B"&&!r.zone)));
   if(z.code==="HQ") return rows.filter(r=>r.dc===dc&&r.tier==="B");
@@ -859,9 +1045,10 @@ function generatePdfReport(){
   dcOrder.forEach(dc=>{ zoneRowCount += (grouped[dc]||[]).length + 2; }); // +2 for HQ&Other row + Discom Total row
   if(uppclHQ) zoneRowCount+=1;
 
-  let colCount=2, fontPx=12, padY=2.2;
-  if(zoneRowCount>40){colCount=3;fontPx=11.2;padY=1.8}
-  if(zoneRowCount>60){colCount=3;fontPx=10.2;padY=1.4}
+  let colCount=2, fontPx=14.5, padY=3.1;
+  if(zoneRowCount>30){colCount=2;fontPx=13.4;padY=2.7}
+  if(zoneRowCount>45){colCount=3;fontPx=12.6;padY=2.3}
+  if(zoneRowCount>65){colCount=3;fontPx=11.2;padY=1.8}
 
   let overallTotal=0;
 
@@ -911,9 +1098,9 @@ function generatePdfReport(){
     +'*{box-sizing:border-box}'
     +'html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}'
     +'.page{width:100%}'
-    +'h1{font-size:18px;margin:0 0 2px;font-weight:700;color:#000}'
-    +'.meta{font-size:12px;color:#000;margin:0 0 8px}'
-    +'.sechead{font-size:13.5px;font-weight:700;margin:0 0 5px;border-bottom:1.4px solid #000;padding-bottom:2px;color:#000}'
+    +'h1{font-size:19.5px;margin:0 0 2px;font-weight:700;color:#000}'
+    +'.meta{font-size:12.5px;color:#000;margin:0 0 8px}'
+    +'.sechead{font-size:14.5px;font-weight:700;margin:0 0 5px;border-bottom:1.4px solid #000;padding-bottom:2px;color:#000}'
     +'.cols{column-count:'+colCount+';column-gap:9px}'
     +'.dblock{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:8px}'
     +'.dtable{width:100%;border-collapse:collapse;border:1px solid #000;font-size:'+fontPx+'px}'
@@ -929,7 +1116,7 @@ function generatePdfReport(){
     +'.grand td:first-child{text-align:left;font-weight:600}'
     +'.grand td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}'
     +'.grand tr.final td{font-weight:700;background:#e2e2e2;font-size:'+(fontPx+2.2)+'px}'
-    +'.foot{margin-top:7px;font-size:10px;color:#000;border-top:0.6px solid #000;padding-top:3px}'
+    +'.foot{margin-top:7px;font-size:11px;color:#000;border-top:0.6px solid #000;padding-top:3px}'
     +'@media print{.cols{column-count:'+colCount+'}}'
     +'</style></head><body><div class="page">'
     +'<h1>Device Office Mapper — Discom &amp; Zone Report</h1>'
@@ -942,6 +1129,135 @@ function generatePdfReport(){
       +'<tr class="final"><td>Grand Total (All Devices)</td><td>'+grandTotal.toLocaleString()+'</td></tr>'
     +'</table>'
     +'<div class="foot">Matching performed locally in-browser from the UEM device report.</div>'
+    +'</div>'
+    +'<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>'
+    +'</body></html>';
+
+  const w=window.open("","_blank");
+  if(!w){alert("Please allow pop-ups to export the PDF report.");return}
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function fmtDelta(n){
+  if(n>0) return "+"+n.toLocaleString();
+  if(n<0) return "−"+Math.abs(n).toLocaleString();
+  return "0";
+}
+
+function generateComparativePdfReport(){
+  const dcOrder=["DV","PV","MV","PU","KE"];
+  const prevUnmatched=prevRows.filter(r=>!r.dc).length;
+  const currUnmatched=currRows.filter(r=>!r.dc).length;
+  const prevUppclHQ=prevRows.filter(r=>r.dc==="UP"&&r.tier==="B").length;
+  const currUppclHQ=currRows.filter(r=>r.dc==="UP"&&r.tier==="B").length;
+
+  const grouped={};
+  (O.canonicalZones||[]).forEach(z=>{
+    grouped[z.prefix]??=[];
+    if(!grouped[z.prefix].some(x=>x.zone===z.zone&&x.code===z.code)) grouped[z.prefix].push(z);
+  });
+
+  // Count rows of actual table content to decide column layout / font size.
+  // The comparative table carries three number columns (Prev / Curr / Δ)
+  // instead of one, so it needs a bit more horizontal room per row.
+  let zoneRowCount=0;
+  dcOrder.forEach(dc=>{ zoneRowCount += (grouped[dc]||[]).length + 2; });
+  if(prevUppclHQ || currUppclHQ) zoneRowCount+=1;
+
+  let colCount=2, fontPx=13, padY=2.5;
+  if(zoneRowCount>30){colCount=2;fontPx=12;padY=2.1}
+  if(zoneRowCount>45){colCount=3;fontPx=11;padY=1.7}
+  if(zoneRowCount>65){colCount=3;fontPx=9.8;padY=1.3}
+
+  let prevOverallTotal=0, currOverallTotal=0;
+
+  const blocks=dcOrder.map(dc=>{
+    const dcZones=grouped[dc]||[];
+    const prevDirect=prevRows.filter(r=>r.dc===dc).length;
+    const currDirect=currRows.filter(r=>r.dc===dc).length;
+    if(!prevDirect && !currDirect && !dcZones.length) return "";
+    const prevHq=prevRows.filter(r=>r.dc===dc&&r.tier==="B").length;
+    const currHq=currRows.filter(r=>r.dc===dc&&r.tier==="B").length;
+    const prevOther=prevRows.filter(r=>r.dc===dc&&!r.zone&&r.tier!=="B").length;
+    const currOther=currRows.filter(r=>r.dc===dc&&!r.zone&&r.tier!=="B").length;
+    prevOverallTotal+=prevDirect; currOverallTotal+=currDirect;
+
+    let zoneRows="";
+    dcZones.forEach(z=>{
+      const pn=zoneCountForRows(prevRows,dc,z);
+      const cn=zoneCountForRows(currRows,dc,z);
+      zoneRows+='<tr><td class="zc">'+esc(z.zone)+'</td><td class="nn">'+pn.toLocaleString()+'</td><td class="nn">'+cn.toLocaleString()+'</td><td class="nn">'+fmtDelta(cn-pn)+'</td></tr>';
+    });
+    const pHqOther=prevHq+prevOther, cHqOther=currHq+currOther;
+    zoneRows+='<tr class="sub"><td class="zc">HQ &amp; Other offices</td><td class="nn">'+pHqOther.toLocaleString()+'</td><td class="nn">'+cHqOther.toLocaleString()+'</td><td class="nn">'+fmtDelta(cHqOther-pHqOther)+'</td></tr>';
+    zoneRows+='<tr class="totalrow"><td class="zc">'+esc(FULL[dc]||dc)+' Total</td><td class="nn">'+prevDirect.toLocaleString()+'</td><td class="nn">'+currDirect.toLocaleString()+'</td><td class="nn">'+fmtDelta(currDirect-prevDirect)+'</td></tr>';
+
+    return '<div class="dblock">'
+      +'<table class="dtable">'
+      +'<thead><tr class="dhead"><th colspan="4">'+esc(FULL[dc]||dc)+'</th></tr>'
+      +'<tr class="colhead"><th>Zone</th><th class="nn">Prev</th><th class="nn">Curr</th><th class="nn">&Delta;</th></tr></thead>'
+      +'<tbody>'+zoneRows+'</tbody>'
+      +'</table>'
+      +'</div>';
+  }).join("");
+
+  let uppclBlock="";
+  if(prevUppclHQ || currUppclHQ){
+    prevOverallTotal+=prevUppclHQ; currOverallTotal+=currUppclHQ;
+    uppclBlock='<div class="dblock">'
+      +'<table class="dtable">'
+      +'<thead><tr class="dhead"><th colspan="4">UPPCL</th></tr>'
+      +'<tr class="colhead"><th>Zone</th><th class="nn">Prev</th><th class="nn">Curr</th><th class="nn">&Delta;</th></tr></thead>'
+      +'<tbody><tr class="totalrow"><td class="zc">UPPCL HQ Total</td><td class="nn">'+prevUppclHQ.toLocaleString()+'</td><td class="nn">'+currUppclHQ.toLocaleString()+'</td><td class="nn">'+fmtDelta(currUppclHQ-prevUppclHQ)+'</td></tr></tbody>'
+      +'</table>'
+      +'</div>';
+  }
+
+  const prevGrandTotal=prevOverallTotal+prevUnmatched;
+  const currGrandTotal=currOverallTotal+currUnmatched;
+  const genDate=new Date();
+  const dateStr=genDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+" · "+genDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Discom & Zone Comparative Report</title><style>'
+    +'@page{size:A4;margin:8mm}'
+    +'*{box-sizing:border-box}'
+    +'html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}'
+    +'.page{width:100%}'
+    +'h1{font-size:18.5px;margin:0 0 2px;font-weight:700;color:#000}'
+    +'.meta{font-size:11.5px;color:#000;margin:0 0 8px}'
+    +'.sechead{font-size:13.5px;font-weight:700;margin:0 0 5px;border-bottom:1.4px solid #000;padding-bottom:2px;color:#000}'
+    +'.cols{column-count:'+colCount+';column-gap:8px}'
+    +'.dblock{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:7px}'
+    +'.dtable{width:100%;border-collapse:collapse;border:1px solid #000;font-size:'+fontPx+'px}'
+    +'.dtable th,.dtable td{border:0.7px solid #000;padding:'+padY+'px 3px;color:#000}'
+    +'.dhead th{background:#e2e2e2;font-weight:700;font-size:'+(fontPx+1.2)+'px;text-align:left;padding:'+(padY+0.7)+'px 3px}'
+    +'.colhead th{background:#f2f2f2;font-weight:700;text-align:left}'
+    +'.zc{text-align:left}'
+    +'.nn{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}'
+    +'tr.sub td{font-style:italic;border-top:1px solid #000}'
+    +'tr.totalrow td{font-weight:700;background:#ececec;border-top:1.2px solid #000}'
+    +'.grand{margin-top:6px;width:100%;border-collapse:collapse;border:1.4px solid #000;font-size:'+(fontPx+1.4)+'px}'
+    +'.grand th{border:0.9px solid #000;padding:'+(padY+1)+'px 5px;color:#000;background:#f2f2f2;text-align:right;font-weight:700}'
+    +'.grand th:first-child{text-align:left}'
+    +'.grand td{border:0.9px solid #000;padding:'+(padY+1)+'px 5px;color:#000;text-align:right;font-variant-numeric:tabular-nums}'
+    +'.grand td:first-child{text-align:left;font-weight:600}'
+    +'.grand tr.final td{font-weight:700;background:#e2e2e2;font-size:'+(fontPx+1.8)+'px}'
+    +'.foot{margin-top:7px;font-size:10.5px;color:#000;border-top:0.6px solid #000;padding-top:3px}'
+    +'@media print{.cols{column-count:'+colCount+'}}'
+    +'</style></head><body><div class="page">'
+    +'<h1>Device Office Mapper — Comparative Discom &amp; Zone Progress Report</h1>'
+    +'<div class="meta">Generated '+dateStr+'</div>'
+    +'<div class="sechead">Discom-wise &amp; Zone-wise System Count — Previous vs Current Day Progress</div>'
+    +'<div class="cols">'+blocks+uppclBlock+'</div>'
+    +'<table class="grand">'
+      +'<tr><th>Overall (All Discoms + UPPCL HQ)</th><th>Prev</th><th>Curr</th><th>&Delta;</th></tr>'
+      +'<tr><td>Overall Total</td><td>'+prevOverallTotal.toLocaleString()+'</td><td>'+currOverallTotal.toLocaleString()+'</td><td>'+fmtDelta(currOverallTotal-prevOverallTotal)+'</td></tr>'
+      +'<tr><td>Hostname Not Updated</td><td>'+prevUnmatched.toLocaleString()+'</td><td>'+currUnmatched.toLocaleString()+'</td><td>'+fmtDelta(currUnmatched-prevUnmatched)+'</td></tr>'
+      +'<tr class="final"><td>Grand Total (All Devices)</td><td>'+prevGrandTotal.toLocaleString()+'</td><td>'+currGrandTotal.toLocaleString()+'</td><td>'+fmtDelta(currGrandTotal-prevGrandTotal)+'</td></tr>'
+    +'</table>'
+    +'<div class="foot">Matching performed locally in-browser from the UEM device reports. &Delta; = Current day count minus Previous day count (one-day progress).</div>'
     +'</div>'
     +'<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>'
     +'</body></html>';

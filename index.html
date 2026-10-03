@@ -192,6 +192,64 @@
                 color: var(--ink);
             }
 
+            /* ---------- First Report Time date filter ---------- */
+            .date-filter {
+                display: none;
+                margin-top: 14px;
+                padding: 16px 18px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--panel);
+            }
+            .date-filter.show { display: block; }
+            .date-filter-head {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .date-filter-head strong { font-size: .9rem; }
+            .date-filter-head span { color: var(--ink-soft); font-size: .78rem; }
+            .date-filter-controls {
+                display: flex;
+                align-items: end;
+                gap: 9px;
+                flex-wrap: wrap;
+            }
+            .date-filter-field {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .date-filter-field label {
+                font-size: .73rem;
+                font-weight: 650;
+                color: var(--ink-soft);
+            }
+            .date-filter-field input {
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                padding: 8px 10px;
+                font: inherit;
+                background: #fff;
+            }
+            .date-filter-field input:focus {
+                outline: 2px solid var(--grid-blue);
+                outline-offset: -1px;
+            }
+            .date-filter-status {
+                margin-top: 9px;
+                color: var(--ink-soft);
+                font-size: .77rem;
+                min-height: 1.1em;
+            }
+            @media (max-width:760px) {
+                .date-filter-controls { align-items: stretch; }
+                .date-filter-field { flex: 1 1 145px; }
+            }
+
             #resetBtn {
                 background: none;
                 border: 1px solid var(--line);
@@ -1029,6 +1087,27 @@
                     <input type="file" id="fileInput" accept=".csv">
                 </div>
                 <div id="fileMeta"></div>
+                <div class="date-filter" id="dateFilter">
+                    <div class="date-filter-head">
+                        <div>
+                            <strong>Filter by First Report Time</strong><br>
+                            <span>Select one date for an exact-day report, or select From and To dates for an inclusive date range.</span>
+                        </div>
+                    </div>
+                    <div class="date-filter-controls">
+                        <div class="date-filter-field">
+                            <label for="firstReportDateFrom">From date</label>
+                            <input type="date" id="firstReportDateFrom">
+                        </div>
+                        <div class="date-filter-field">
+                            <label for="firstReportDateTo">To date</label>
+                            <input type="date" id="firstReportDateTo">
+                        </div>
+                        <button class="ghost-btn" id="applyFirstReportDateBtn" type="button">Apply filter</button>
+                        <button class="ghost-btn" id="clearFirstReportDateBtn" type="button">Clear filter</button>
+                    </div>
+                    <div class="date-filter-status" id="dateFilterStatus"></div>
+                </div>
                 <div id="results">
                     <div class="stats-strip">
                         <div class="stat total">
@@ -17862,8 +17941,12 @@
               , fm = document.getElementById("fileMeta")
               , res = document.getElementById("results");
             let rows = [];
+            let allRows = [];
             let dashboardHeadersGlobal = [];
             let ramColumnIndexGlobal = -1;
+            let firstReportTimeColumnIndexGlobal = -1;
+            let activeFirstReportDateFrom = "";
+            let activeFirstReportDateTo = "";
             bb.onclick = e => {
                 e.stopPropagation();
                 fi.click()
@@ -17941,20 +18024,128 @@
                     alert("Could not find the Computer Name column.");
                     return
                 }
-                rows = built.rows;
+                allRows = built.rows;
+                rows = allRows.slice();
+                fm.dataset.filename = name;
                 dashboardHeadersGlobal = built.headers;
                 ramColumnIndexGlobal = findRamColumn(dashboardHeadersGlobal);
+                firstReportTimeColumnIndexGlobal = dashboardHeadersGlobal.findIndex(h => /first\s*report\s*time/i.test(String(h).trim()));
+                activeFirstReportDateFrom = "";
+                activeFirstReportDateTo = "";
+                document.getElementById("firstReportDateFrom").value = "";
+                document.getElementById("firstReportDateTo").value = "";
+                setupFirstReportDateFilter();
                 fm.innerHTML = "<b>" + esc(name) + "</b> · " + rows.length.toLocaleString() + " devices <button id='resetBtn' type='button'>Upload a different file</button>";
                 fm.classList.add("show");
                 document.getElementById("resetBtn").onclick = () => {
                     fm.classList.remove("show");
+                    document.getElementById("dateFilter").classList.remove("show");
                     res.classList.remove("show");
-                    fi.value = ""
+                    fi.value = "";
+                    rows = [];
+                    allRows = [];
+                    activeFirstReportDateFrom = "";
+                    activeFirstReportDateTo = "";
+                    document.getElementById("firstReportDateFrom").value = "";
+                    document.getElementById("firstReportDateTo").value = "";
+                    document.getElementById("dateFilterStatus").textContent = "";
                 }
                 ;
                 render();
             }
 
+
+            function firstReportDateKey(value) {
+                const raw = String(value ?? "").trim();
+                if (!raw) return "";
+                // UEM commonly exports: Sat, 22 Aug 2026 16:21:04 +0530
+                const m = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})\b/);
+                if (m) {
+                    const months = { jan:1, january:1, feb:2, february:2, mar:3, march:3, apr:4, april:4, may:5, jun:6, june:6, jul:7, july:7, aug:8, august:8, sep:9, sept:9, september:9, oct:10, october:10, nov:11, november:11, dec:12, december:12 };
+                    const month = months[m[2].toLowerCase()];
+                    if (month) return m[3] + "-" + String(month).padStart(2,"0") + "-" + String(Number(m[1])).padStart(2,"0");
+                }
+                const d = new Date(raw);
+                if (Number.isNaN(d.getTime())) return "";
+                return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+            }
+
+            function applyFirstReportDateFilter() {
+                const from = document.getElementById("firstReportDateFrom").value;
+                const to = document.getElementById("firstReportDateTo").value;
+                if (from && to && from > to) {
+                    alert("From date cannot be later than To date.");
+                    return;
+                }
+                if (firstReportTimeColumnIndexGlobal < 0) {
+                    alert("The uploaded CSV does not contain a First Report Time column.");
+                    return;
+                }
+                activeFirstReportDateFrom = from;
+                activeFirstReportDateTo = to || from;
+                if (!from && !to) {
+                    rows = allRows.slice();
+                } else {
+                    const start = from || to;
+                    const end = to || from;
+                    rows = allRows.filter(r => {
+                        const key = firstReportDateKey((r.originalRow || [])[firstReportTimeColumnIndexGlobal]);
+                        return key && key >= start && key <= end;
+                    });
+                }
+                const status = document.getElementById("dateFilterStatus");
+                if (!from && !to) {
+                    status.textContent = "No date filter applied — showing the complete uploaded report.";
+                } else if (from === to || (!to && from) || (!from && to)) {
+                    const exact = from || to;
+                    status.textContent = "Showing " + rows.length.toLocaleString() + " of " + allRows.length.toLocaleString() + " systems with First Report Time on " + exact + ".";
+                } else {
+                    status.textContent = "Showing " + rows.length.toLocaleString() + " of " + allRows.length.toLocaleString() + " systems with First Report Time from " + from + " to " + to + ", inclusive.";
+                }
+                fm.innerHTML = "<b>" + esc(fm.dataset.filename || "Uploaded report") + "</b> · " + rows.length.toLocaleString() + " devices" + (rows.length !== allRows.length ? " (" + allRows.length.toLocaleString() + " total in file)" : "") + " <button id='resetBtn' type='button'>Upload a different file</button>";
+                document.getElementById("resetBtn").onclick = () => {
+                    fm.classList.remove("show");
+                    document.getElementById("dateFilter").classList.remove("show");
+                    res.classList.remove("show");
+                    fi.value = "";
+                    rows = [];
+                    allRows = [];
+                    activeFirstReportDateFrom = "";
+                    activeFirstReportDateTo = "";
+                    document.getElementById("firstReportDateFrom").value = "";
+                    document.getElementById("firstReportDateTo").value = "";
+                    document.getElementById("dateFilterStatus").textContent = "";
+                };
+                render();
+            }
+
+            function setupFirstReportDateFilter() {
+                const wrap = document.getElementById("dateFilter");
+                const status = document.getElementById("dateFilterStatus");
+                if (firstReportTimeColumnIndexGlobal < 0) {
+                    wrap.classList.remove("show");
+                    status.textContent = "";
+                    return;
+                }
+                wrap.classList.add("show");
+                const keys = allRows.map(r => firstReportDateKey((r.originalRow || [])[firstReportTimeColumnIndexGlobal])).filter(Boolean).sort();
+                const fromEl = document.getElementById("firstReportDateFrom");
+                const toEl = document.getElementById("firstReportDateTo");
+                if (keys.length) {
+                    fromEl.min = keys[0]; fromEl.max = keys[keys.length-1];
+                    toEl.min = keys[0]; toEl.max = keys[keys.length-1];
+                    status.textContent = "Available First Report Time dates: " + keys[0] + " to " + keys[keys.length-1] + ".";
+                } else {
+                    status.textContent = "First Report Time column found, but no readable dates were found.";
+                }
+            }
+
+            document.getElementById("applyFirstReportDateBtn").onclick = applyFirstReportDateFilter;
+            document.getElementById("clearFirstReportDateBtn").onclick = () => {
+                document.getElementById("firstReportDateFrom").value = "";
+                document.getElementById("firstReportDateTo").value = "";
+                applyFirstReportDateFilter();
+            };
 
             /* ================== RAM Analysis ================== */
             function findRamColumn(headers) {

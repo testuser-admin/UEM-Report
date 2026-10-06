@@ -17896,8 +17896,30 @@
 
             function classify(raw) {
                 const u = norm(raw);
+                const rawName = String(raw ?? "").trim();
+
+                // PuVVNL HQ endpoint naming convention:
+                // Any hostname in the form PU-XX-... (XX = exactly two digits)
+                // belongs to PuVVNL HQ, irrespective of any other text/codes in
+                // the hostname. Keep these systems out of the normal zone/circle
+                // inference so they cannot be incorrectly mapped to a field zone.
+                if (/^PU-\d{2}-(?:.+)$/i.test(rawName)) {
+                    return {
+                        dc: "PU",
+                        tier: "B",
+                        zone: "PUVVNL HQ",
+                        zoneCode: "HQ",
+                        circle: null,
+                        circleCode: null,
+                        division: null,
+                        divisionCode: null,
+                        sdo: null,
+                        sdoCode: null,
+                        reason: "PU-XX hostname convention → PuVVNL HQ"
+                    };
+                }
+
                 const base = classifyBase(raw);
-                if (!u || base.tier === "B") return hierarchyFromText(u, base);
                 return hierarchyFromText(u, base);
             }
 
@@ -18547,13 +18569,12 @@
                 if (ramColumnIndexGlobal < 0) { alert("RAM column was not found in the uploaded UEM CSV."); return; }
                 const analysis=getRamSelection(); if(!analysis) return;
 
-                // Keep every original UEM column and append the complete office hierarchy.
+                // Export ONLY the columns that existed in the uploaded UEM CSV.
+                // Do not append calculated RAM, office-mapping, or filter columns.
                 const headers = dashboardHeadersGlobal || [];
-                const hierarchyHeaders = ["Discom", "Zone", "Circle", "Division", "Sub-Division", "Office Level", "Zone Code", "Circle Code", "Division Code", "Sub-Division Code"];
-                const x = [[...headers, ...hierarchyHeaders].map(cell).join(",")];
+                const x = [headers.map(cell).join(",")];
                 analysis.selected.forEach(({row:r}) => {
-                    const vals = (r.originalRow || []).map(v => String(v ?? ""));
-                    x.push([...vals, ...hierarchyExportValues(r)].map(cell).join(","));
+                    x.push((r.originalRow || []).map(cell).join(","));
                 });
 
                 dl(x.join("\r\n"),`ram_${analysis.operator}_${String(analysis.threshold).replace(/\./g,"_")}${analysis.unit}.csv`);
@@ -19316,31 +19337,14 @@
                 return String(s || "export").replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 100) || "export";
             }
 
-            function hierarchyExportValues(r) {
-                const discom = FULL[r.dc] || r.dc || "";
-                const officeLevel = r.sdo ? "Sub-Division Office" : r.division ? "Division Office" : r.circle ? "Circle Office" : r.zone ? "Zone Office" : (r.tier === "B" ? "HQ" : "Other office");
-                return [
-                    discom,
-                    r.zone || "",
-                    r.circle || "",
-                    r.division || "",
-                    r.sdo || "",
-                    officeLevel,
-                    r.zoneCode || "",
-                    r.circleCode || "",
-                    r.divisionCode || "",
-                    r.sdoCode || ""
-                ];
-            }
-
             function downloadRows(selected, filename) {
                 const headers = dashboardHeadersGlobal || [];
-                const hierarchyHeaders = ["Discom", "Zone", "Circle", "Division", "Sub-Division", "Office Level", "Zone Code", "Circle Code", "Division Code", "Sub-Division Code"];
-                const x = [[...headers, ...hierarchyHeaders].map(cell).join(",")];
+                const x = [headers.map(cell).join(",")];
                 selected.forEach(r => {
-                    const vals = headers.map((_, i) => String((r.originalRow || [])[i] ?? ""));
-                    x.push([...vals, ...hierarchyExportValues(r)].map(cell).join(","));
-                });
+                    const vals = headers.map( (_, i) => String((r.originalRow || [])[i] ?? ""));
+                    x.push(vals.map(cell).join(","));
+                }
+                );
                 dl(x.join("\r\n"), filename);
             }
 
@@ -19384,12 +19388,9 @@
             }
             ;
             downloadDetailBtn.onclick = () => {
-                const x = ["Computer Name,Discom,Zone,Circle,Division,Sub-Division,Office Level,Zone Code,Circle Code,Division Code,Sub-Division Code,Classification,Reason"];
-                rows.forEach(r => {
-                    const h = hierarchyExportValues(r);
-                    x.push([r.name, ...h, r.zone ? (r.tier === "B" ? "HQ" : "Zone identified") : (r.tier === "B" ? "HQ" : "Other office"), r.reason].map(cell).join(","));
-                });
-                dl(x.join("\n"), "device_office_hierarchy_detail.csv");
+                const x = ["Computer Name,Discom,Zone,Zone Code,Classification,Reason"];
+                rows.forEach(r => x.push([r.name, FULL[r.dc] || r.dc || "", r.zone || "", r.zoneCode || "", r.zone ? (r.tier === "B" ? "HQ" : "Zone identified") : (r.tier === "B" ? "HQ" : "Other office"), r.reason].map(cell).join(",")));
+                dl(x.join("\n"), "device_discom_zone_detail.csv");
             }
             ;
             exportPdfBtn.onclick = function() {

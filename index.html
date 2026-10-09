@@ -192,64 +192,6 @@
                 color: var(--ink);
             }
 
-            /* ---------- First Report Time date filter ---------- */
-            .date-filter {
-                display: none;
-                margin-top: 14px;
-                padding: 16px 18px;
-                border: 1px solid var(--line);
-                border-radius: 10px;
-                background: var(--panel);
-            }
-            .date-filter.show { display: block; }
-            .date-filter-head {
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 12px;
-                flex-wrap: wrap;
-                margin-bottom: 10px;
-            }
-            .date-filter-head strong { font-size: .9rem; }
-            .date-filter-head span { color: var(--ink-soft); font-size: .78rem; }
-            .date-filter-controls {
-                display: flex;
-                align-items: end;
-                gap: 9px;
-                flex-wrap: wrap;
-            }
-            .date-filter-field {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            }
-            .date-filter-field label {
-                font-size: .73rem;
-                font-weight: 650;
-                color: var(--ink-soft);
-            }
-            .date-filter-field input {
-                border: 1px solid var(--line);
-                border-radius: 7px;
-                padding: 8px 10px;
-                font: inherit;
-                background: #fff;
-            }
-            .date-filter-field input:focus {
-                outline: 2px solid var(--grid-blue);
-                outline-offset: -1px;
-            }
-            .date-filter-status {
-                margin-top: 9px;
-                color: var(--ink-soft);
-                font-size: .77rem;
-                min-height: 1.1em;
-            }
-            @media (max-width:760px) {
-                .date-filter-controls { align-items: stretch; }
-                .date-filter-field { flex: 1 1 145px; }
-            }
-
             #resetBtn {
                 background: none;
                 border: 1px solid var(--line);
@@ -912,7 +854,7 @@
             .manual-adjust-head p { margin:3px 0 0; color:var(--ink-soft); font-size:.8rem; max-width:760px; }
             .manual-adjust-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
             .manual-add-row { display:flex; align-items:center; gap:10px; margin:10px 0 12px; flex-wrap:wrap; }
-            .manual-add-row select { min-width:330px; max-width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:#fff; font:inherit; }
+            .manual-add-row select { min-width:260px; max-width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:#fff; font:inherit; }
             .manual-add-row select:focus { outline:2px solid var(--grid-blue); outline-offset:-1px; }
             .manual-correction-list { display:flex; flex-direction:column; gap:8px; }
             .manual-correction-row { display:grid; grid-template-columns:minmax(250px,1fr) 120px 120px 150px 38px; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line-soft); border-radius:8px; background:#FBFBFC; }
@@ -1087,27 +1029,6 @@
                     <input type="file" id="fileInput" accept=".csv">
                 </div>
                 <div id="fileMeta"></div>
-                <div class="date-filter" id="dateFilter">
-                    <div class="date-filter-head">
-                        <div>
-                            <strong>Filter by First Report Time</strong><br>
-                            <span>Select one date for an exact-day report, or select From and To dates for an inclusive date range.</span>
-                        </div>
-                    </div>
-                    <div class="date-filter-controls">
-                        <div class="date-filter-field">
-                            <label for="firstReportDateFrom">From date</label>
-                            <input type="date" id="firstReportDateFrom">
-                        </div>
-                        <div class="date-filter-field">
-                            <label for="firstReportDateTo">To date</label>
-                            <input type="date" id="firstReportDateTo">
-                        </div>
-                        <button class="ghost-btn" id="applyFirstReportDateBtn" type="button">Apply filter</button>
-                        <button class="ghost-btn" id="clearFirstReportDateBtn" type="button">Clear filter</button>
-                    </div>
-                    <div class="date-filter-status" id="dateFilterStatus"></div>
-                </div>
                 <div id="results">
                     <div class="stats-strip">
                         <div class="stat total">
@@ -1299,7 +1220,8 @@
                         </div>
                     </div>
                     <div class="manual-add-row">
-                        <select id="manualCorrectionSelect"><option value="">Select DISCOM / zone / HQ / Other office…</option></select>
+                        <select id="manualDiscomSelect" aria-label="Select DISCOM or UPPCL HQ"><option value="">Select DISCOM / UPPCL HQ…</option></select>
+                        <select id="manualCorrectionSelect" aria-label="Select office"><option value="">Select office under selected DISCOM…</option></select>
                         <button type="button" class="ghost-btn" id="addManualCorrectionBtn">＋ Add correction</button>
                     </div>
                     <div class="manual-correction-header"><span>Selected item</span><span>Prev old</span><span>Curr old</span><span>Updated count</span><span></span></div>
@@ -17896,30 +17818,8 @@
 
             function classify(raw) {
                 const u = norm(raw);
-                const rawName = String(raw ?? "").trim();
-
-                // PuVVNL HQ endpoint naming convention:
-                // Any hostname in the form PU-XX-... (XX = exactly two digits)
-                // belongs to PuVVNL HQ, irrespective of any other text/codes in
-                // the hostname. Keep these systems out of the normal zone/circle
-                // inference so they cannot be incorrectly mapped to a field zone.
-                if (/^PU-\d{2}-(?:.+)$/i.test(rawName)) {
-                    return {
-                        dc: "PU",
-                        tier: "B",
-                        zone: "PUVVNL HQ",
-                        zoneCode: "HQ",
-                        circle: null,
-                        circleCode: null,
-                        division: null,
-                        divisionCode: null,
-                        sdo: null,
-                        sdoCode: null,
-                        reason: "PU-XX hostname convention → PuVVNL HQ"
-                    };
-                }
-
                 const base = classifyBase(raw);
+                if (!u || base.tier === "B") return hierarchyFromText(u, base);
                 return hierarchyFromText(u, base);
             }
 
@@ -17963,12 +17863,8 @@
               , fm = document.getElementById("fileMeta")
               , res = document.getElementById("results");
             let rows = [];
-            let allRows = [];
             let dashboardHeadersGlobal = [];
             let ramColumnIndexGlobal = -1;
-            let firstReportTimeColumnIndexGlobal = -1;
-            let activeFirstReportDateFrom = "";
-            let activeFirstReportDateTo = "";
             bb.onclick = e => {
                 e.stopPropagation();
                 fi.click()
@@ -18046,128 +17942,20 @@
                     alert("Could not find the Computer Name column.");
                     return
                 }
-                allRows = built.rows;
-                rows = allRows.slice();
-                fm.dataset.filename = name;
+                rows = built.rows;
                 dashboardHeadersGlobal = built.headers;
                 ramColumnIndexGlobal = findRamColumn(dashboardHeadersGlobal);
-                firstReportTimeColumnIndexGlobal = dashboardHeadersGlobal.findIndex(h => /first\s*report\s*time/i.test(String(h).trim()));
-                activeFirstReportDateFrom = "";
-                activeFirstReportDateTo = "";
-                document.getElementById("firstReportDateFrom").value = "";
-                document.getElementById("firstReportDateTo").value = "";
-                setupFirstReportDateFilter();
                 fm.innerHTML = "<b>" + esc(name) + "</b> · " + rows.length.toLocaleString() + " devices <button id='resetBtn' type='button'>Upload a different file</button>";
                 fm.classList.add("show");
                 document.getElementById("resetBtn").onclick = () => {
                     fm.classList.remove("show");
-                    document.getElementById("dateFilter").classList.remove("show");
                     res.classList.remove("show");
-                    fi.value = "";
-                    rows = [];
-                    allRows = [];
-                    activeFirstReportDateFrom = "";
-                    activeFirstReportDateTo = "";
-                    document.getElementById("firstReportDateFrom").value = "";
-                    document.getElementById("firstReportDateTo").value = "";
-                    document.getElementById("dateFilterStatus").textContent = "";
+                    fi.value = ""
                 }
                 ;
                 render();
             }
 
-
-            function firstReportDateKey(value) {
-                const raw = String(value ?? "").trim();
-                if (!raw) return "";
-                // UEM commonly exports: Sat, 22 Aug 2026 16:21:04 +0530
-                const m = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})\b/);
-                if (m) {
-                    const months = { jan:1, january:1, feb:2, february:2, mar:3, march:3, apr:4, april:4, may:5, jun:6, june:6, jul:7, july:7, aug:8, august:8, sep:9, sept:9, september:9, oct:10, october:10, nov:11, november:11, dec:12, december:12 };
-                    const month = months[m[2].toLowerCase()];
-                    if (month) return m[3] + "-" + String(month).padStart(2,"0") + "-" + String(Number(m[1])).padStart(2,"0");
-                }
-                const d = new Date(raw);
-                if (Number.isNaN(d.getTime())) return "";
-                return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-            }
-
-            function applyFirstReportDateFilter() {
-                const from = document.getElementById("firstReportDateFrom").value;
-                const to = document.getElementById("firstReportDateTo").value;
-                if (from && to && from > to) {
-                    alert("From date cannot be later than To date.");
-                    return;
-                }
-                if (firstReportTimeColumnIndexGlobal < 0) {
-                    alert("The uploaded CSV does not contain a First Report Time column.");
-                    return;
-                }
-                activeFirstReportDateFrom = from;
-                activeFirstReportDateTo = to || from;
-                if (!from && !to) {
-                    rows = allRows.slice();
-                } else {
-                    const start = from || to;
-                    const end = to || from;
-                    rows = allRows.filter(r => {
-                        const key = firstReportDateKey((r.originalRow || [])[firstReportTimeColumnIndexGlobal]);
-                        return key && key >= start && key <= end;
-                    });
-                }
-                const status = document.getElementById("dateFilterStatus");
-                if (!from && !to) {
-                    status.textContent = "No date filter applied — showing the complete uploaded report.";
-                } else if (from === to || (!to && from) || (!from && to)) {
-                    const exact = from || to;
-                    status.textContent = "Showing " + rows.length.toLocaleString() + " of " + allRows.length.toLocaleString() + " systems with First Report Time on " + exact + ".";
-                } else {
-                    status.textContent = "Showing " + rows.length.toLocaleString() + " of " + allRows.length.toLocaleString() + " systems with First Report Time from " + from + " to " + to + ", inclusive.";
-                }
-                fm.innerHTML = "<b>" + esc(fm.dataset.filename || "Uploaded report") + "</b> · " + rows.length.toLocaleString() + " devices" + (rows.length !== allRows.length ? " (" + allRows.length.toLocaleString() + " total in file)" : "") + " <button id='resetBtn' type='button'>Upload a different file</button>";
-                document.getElementById("resetBtn").onclick = () => {
-                    fm.classList.remove("show");
-                    document.getElementById("dateFilter").classList.remove("show");
-                    res.classList.remove("show");
-                    fi.value = "";
-                    rows = [];
-                    allRows = [];
-                    activeFirstReportDateFrom = "";
-                    activeFirstReportDateTo = "";
-                    document.getElementById("firstReportDateFrom").value = "";
-                    document.getElementById("firstReportDateTo").value = "";
-                    document.getElementById("dateFilterStatus").textContent = "";
-                };
-                render();
-            }
-
-            function setupFirstReportDateFilter() {
-                const wrap = document.getElementById("dateFilter");
-                const status = document.getElementById("dateFilterStatus");
-                if (firstReportTimeColumnIndexGlobal < 0) {
-                    wrap.classList.remove("show");
-                    status.textContent = "";
-                    return;
-                }
-                wrap.classList.add("show");
-                const keys = allRows.map(r => firstReportDateKey((r.originalRow || [])[firstReportTimeColumnIndexGlobal])).filter(Boolean).sort();
-                const fromEl = document.getElementById("firstReportDateFrom");
-                const toEl = document.getElementById("firstReportDateTo");
-                if (keys.length) {
-                    fromEl.min = keys[0]; fromEl.max = keys[keys.length-1];
-                    toEl.min = keys[0]; toEl.max = keys[keys.length-1];
-                    status.textContent = "Available First Report Time dates: " + keys[0] + " to " + keys[keys.length-1] + ".";
-                } else {
-                    status.textContent = "First Report Time column found, but no readable dates were found.";
-                }
-            }
-
-            document.getElementById("applyFirstReportDateBtn").onclick = applyFirstReportDateFilter;
-            document.getElementById("clearFirstReportDateBtn").onclick = () => {
-                document.getElementById("firstReportDateFrom").value = "";
-                document.getElementById("firstReportDateTo").value = "";
-                applyFirstReportDateFilter();
-            };
 
             /* ================== RAM Analysis ================== */
             function findRamColumn(headers) {
@@ -18822,7 +18610,12 @@
             function getAdjustedBucketCount(day, rowsArr, dc, bucket) {
                 const key = manualKey(dc, bucket), v = getManualValue(day, key);
                 if (v !== null && Number.isFinite(v)) return Math.max(0, Math.round(v));
-                if (bucket === "HQ") return rowsArr.filter(r => r.dc === dc && r.tier === "B").length;
+                // UPPCL HQ is identified by both its tier and the explicit HQ zone label.
+                // Its correction key is UP|HQ, so the baseline and PDF must use the same bucket.
+                if (bucket === "HQ") {
+                    if (dc === "UP") return rowsArr.filter(r => r.dc === "UP" && r.tier === "B" && r.zone === "UPPCL HQ").length;
+                    return rowsArr.filter(r => r.dc === dc && r.tier === "B").length;
+                }
                 if (bucket === "OTHER") return rowsArr.filter(r => r.dc === dc && !r.zone && r.tier !== "B").length;
                 return 0;
             }
@@ -18841,15 +18634,42 @@
                     grouped[z.prefix] ??= [];
                     if (!grouped[z.prefix].some(x => x.zone === z.zone && x.code === z.code)) grouped[z.prefix].push(z);
                 });
-                let out = [];
+                const out = [];
+                // UPPCL HQ is a separate top-level choice; its office selector contains its HQ total.
+                out.push({key:manualKey("UP","HQ"), dc:"UP", label:"UPPCL HQ — Total", type:"UPPCL HQ"});
                 dcOrder.forEach(dc => {
                     const dcName = FULL[dc] || dc;
-                    out.push({key:dc, label:dcName + " — DISCOM Total", type:"DISCOM total"});
-                    out.push({key:manualKey(dc,"HQ"), label:dcName + " — HQ", type:"DISCOM HQ"});
-                    out.push({key:manualKey(dc,"OTHER"), label:dcName + " — Other office", type:"Other office"});
-                    (grouped[dc] || []).forEach(z => out.push({key:manualKey(dc,z.code), label:dcName + " — " + z.zone + " (" + z.code + ")", type:"Zone"}));
+                    out.push({key:dc, dc, label:dcName + " — DISCOM Total", type:"DISCOM total"});
+                    out.push({key:manualKey(dc,"HQ"), dc, label:dcName + " — HQ", type:"DISCOM HQ"});
+                    out.push({key:manualKey(dc,"OTHER"), dc, label:dcName + " — Other office", type:"Other office"});
+                    (grouped[dc] || []).forEach(z => out.push({key:manualKey(dc,z.code), dc, label:dcName + " — " + z.zone + " (" + z.code + ")", type:"Zone"}));
                 });
                 return out;
+            }
+
+            function populateManualCorrectionSelect() {
+                const dcSel = document.getElementById("manualDiscomSelect");
+                const officeSel = document.getElementById("manualCorrectionSelect");
+                if (!dcSel || !officeSel) return;
+                const priorDc = dcSel.value;
+                const options = manualOptions();
+                const dcChoices = [
+                    {value:"UP", label:"UPPCL HQ"},
+                    {value:"DV", label:FULL.DV}, {value:"PV", label:FULL.PV},
+                    {value:"MV", label:FULL.MV}, {value:"PU", label:FULL.PU}, {value:"KE", label:FULL.KE}
+                ];
+                dcSel.innerHTML = '<option value="">Select DISCOM / UPPCL HQ…</option>';
+                dcChoices.forEach(d => { const o=document.createElement("option"); o.value=d.value; o.textContent=d.label; dcSel.appendChild(o); });
+                if (priorDc && dcChoices.some(d=>d.value===priorDc)) dcSel.value=priorDc;
+                const selectedDc = dcSel.value;
+                const priorOffice = officeSel.value;
+                officeSel.innerHTML = '<option value="">Select office under selected DISCOM…</option>';
+                if (!selectedDc) { officeSel.disabled=true; return; }
+                officeSel.disabled=false;
+                options.filter(o => o.dc===selectedDc && !manualSelectedKeys.includes(o.key)).forEach(o => {
+                    const opt=document.createElement("option"); opt.value=o.key; opt.textContent=o.label; officeSel.appendChild(opt);
+                });
+                if (priorOffice && !manualSelectedKeys.includes(priorOffice) && Array.from(officeSel.options).some(o=>o.value===priorOffice)) officeSel.value=priorOffice;
             }
 
             function findManualOption(key) { return manualOptions().find(x => x.key === key); }
@@ -18866,19 +18686,6 @@
                 if (item === "HQ" || item === "OTHER") return getAdjustedBucketCount(day, rows, dc, item);
                 const z = (O.canonicalZones || []).find(x => x.prefix === dc && x.code === item);
                 return z ? getAdjustedZoneCount(day, rows, dc, z) : 0;
-            }
-
-            function populateManualCorrectionSelect() {
-                const sel = document.getElementById("manualCorrectionSelect");
-                if (!sel) return;
-                const current = sel.value;
-                sel.innerHTML = '<option value="">Select DISCOM / zone / HQ / Other office…</option>';
-                manualOptions().forEach(o => {
-                    if (!manualSelectedKeys.includes(o.key)) {
-                        const opt = document.createElement("option"); opt.value = o.key; opt.textContent = o.label; sel.appendChild(opt);
-                    }
-                });
-                if (current && !manualSelectedKeys.includes(current)) sel.value = current;
             }
 
             function renderManualAdjustments() {
@@ -18988,9 +18795,14 @@
                 body.querySelectorAll('.reduced-item-head').forEach(h => h.onclick = () => h.parentElement.classList.toggle('open'));
             }
 
+            document.getElementById("manualDiscomSelect").onchange = () => {
+                const officeSel = document.getElementById("manualCorrectionSelect");
+                if (officeSel) officeSel.value = "";
+                populateManualCorrectionSelect();
+            };
             document.getElementById("addManualCorrectionBtn").onclick = () => {
                 const sel = document.getElementById("manualCorrectionSelect"), key = sel.value;
-                if (!key) return;
+                if (!key) { alert("Please select a DISCOM / UPPCL HQ and then an office."); return; }
                 if (!manualSelectedKeys.includes(key)) manualSelectedKeys.push(key);
                 sel.value = "";
                 window.manualCorrectionsSaved = false;
@@ -19509,8 +19321,8 @@
                 const dcOrder = ["DV", "PV", "MV", "PU", "KE"];
                 const prevUnmatched = prevRows.filter(r => !r.dc).length;
                 const currUnmatched = currRows.filter(r => !r.dc).length;
-                const prevUppclHQ = prevRows.filter(r => r.dc === "UP" && r.tier === "B").length;
-                const currUppclHQ = currRows.filter(r => r.dc === "UP" && r.tier === "B").length;
+                const prevUppclHQ = getAdjustedBucketCount("prev", prevRows, "UP", "HQ");
+                const currUppclHQ = getAdjustedBucketCount("curr", currRows, "UP", "HQ");
 
                 const grouped = {};
                 (O.canonicalZones || []).forEach(z => {

@@ -17429,6 +17429,29 @@
                         reason: "Shakti Bhawan / UPPCL HQ"
                     };
 
+                // NOC systems belong to UPPCL HQ, not PVVNL HQ.
+                // norm() removes hyphens, so NOC-PC-17 -> NOCPC17 and
+                // NOC-PC-47 -> NOCPC47. Keep NOC-DR-PC variants here too.
+                if (/^NOCPC\d+$/.test(text) || /^NOCDRPC\d+$/.test(text))
+                    return {
+                        dc: "UP",
+                        tier: "B",
+                        zone: "UPPCL HQ",
+                        zoneCode: "HQ",
+                        reason: "UPPCL HQ NOC hostname convention"
+                    };
+
+                // PVVNL HQ special/training systems, including DR-TRN-PC35
+                // and DESKTOP-TESTUEM.
+                if (/^DRTRNPC\d+$/.test(text) || /^DESKTOPTESTUEM\d*$/.test(text))
+                    return {
+                        dc: "PV",
+                        tier: "B",
+                        zone: "PVVNL HQ",
+                        zoneCode: "HQ",
+                        reason: "PVVNL HQ training hostname convention"
+                    };
+
                 // Explicit DISCOM-HQ naming conventions. These must be checked before
                 // the normal KE/DV/PV/MV/PU prefix rule so they do not become a normal zone.
                 if (text.startsWith("KESCO") || text.startsWith("KEHQ"))
@@ -17472,13 +17495,15 @@
                         zoneCode: "HQ",
                         reason: "DVHQ naming convention"
                     };
-                if (text.startsWith("PUHQ"))
+                // PuVVNL HQ systems use the PU-<digits> hostname format.
+                // norm() removes hyphens, so PU-1234 is evaluated as PU1234.
+                if (/^PU\d+$/.test(text) || text.startsWith("PUHQ"))
                     return {
                         dc: "PU",
                         tier: "B",
                         zone: "PUVVNL HQ",
                         zoneCode: "HQ",
-                        reason: "PUHQ naming convention"
+                        reason: /^PU\d+$/.test(text) ? "PU-<digits> PuVVNL HQ naming convention" : "PUHQ naming convention"
                     };
 
                 if (text.includes("CEBANDA"))
@@ -17940,27 +17965,41 @@
             const HOST_DOMINANT_PREFIX={"AGR":"DVVNL","ALG":"DVVNL","ATL":"DVVNL","ATR":"DVVNL","AUR":"DVVNL","BND":"DVVNL","BNT":"DVVNL","BTN":"DVVNL","CBM":"DVVNL","CKD":"DVVNL","ETH":"DVVNL","ETW":"DVVNL","FKB":"DVVNL","FZB":"DVVNL","FZD":"DVVNL","GHT":"DVVNL","GND":"DVVNL","GSG":"DVVNL","GUJ":"DVVNL","HMP":"DVVNL","HRS":"DVVNL","HTP":"DVVNL","JHS":"DVVNL","JLN":"DVVNL","JSR":"DVVNL","KCH":"DVVNL","KKL":"DVVNL","KLP":"DVVNL","KMJ":"DVVNL","KNJ":"DVVNL","KSJ":"DVVNL","LPR":"DVVNL","MAH":"DVVNL","MAT":"DVVNL","MDH":"DVVNL","MPI":"DVVNL","MPR":"DVVNL","MRP":"DVVNL","MTH":"DVVNL","ORI":"DVVNL","SDB":"DVVNL","SDR":"DVVNL","SGJ":"DVVNL","SKB":"DVVNL","TDL":"DVVNL","VDV":"DVVNL","ABP":"MVVNL","AKB":"MVVNL","ANL":"MVVNL","BAH":"MVVNL","BAR":"MVVNL","BDK":"MVVNL","BE":"MVVNL","BGM":"MVVNL","BPR":"MVVNL","BRP":"MVVNL","BUD":"MVVNL","BWN":"MVVNL","DRI":"MVVNL","FBD":"MVVNL","FPR":"MVVNL","GGT":"MVVNL","GOL":"MVVNL","GON":"MVVNL","HRD":"MVVNL","JLBD":"MVVNL","KBD":"MVVNL","KKR":"MVVNL","KLN":"MVVNL","KRB":"MVVNL","LHP":"MVVNL","LK0":"MVVNL","LKO":"MVVNL","LKP":"MVVNL","MDI":"MVVNL","MLW":"MVVNL","MMB":"MVVNL","MVVNL":"MVVNL","NAN":"MVVNL","NWB":"MVVNL","NWG":"MVVNL","NWH":"MVVNL","PAL":"MVVNL","PBT":"MVVNL","PPR":"MVVNL","RAB":"MVVNL","RAT":"MVVNL","RUD":"MVVNL","SAN":"MVVNL","SHD":"MVVNL","SJP":"MVVNL","SPR":"MVVNL","SWN":"MVVNL","TIH":"MVVNL","TND":"MVVNL","UJH":"MVVNL","UNM":"MVVNL","ZDP":"MVVNL","AMR":"PVVNL","BDN":"PVVNL","BHJ":"PVVNL","BJO":"PVVNL","BLR":"PVVNL","BPT":"PVVNL","BSP":"PVVNL","BSR":"PVVNL","BTU":"PVVNL","CHN":"PVVNL","CPR":"PVVNL","DBD":"PVVNL","DBI":"PVVNL","DPR":"PVVNL","GGH":"PVVNL","GJL":"PVVNL","GJR":"PVVNL","GLH":"PVVNL","GMR":"PVVNL","GZB":"PVVNL","HAST":"PVVNL","HPL":"PVVNL","HPR":"PVVNL","HPU":"PVVNL","JBD":"PVVNL","KAT":"PVVNL","KHR":"PVVNL","KIP":"PVVNL","KND":"PVVNL","KRJ":"PVVNL","KRN":"PVVNL","LON":"PVVNL","MBD":"PVVNL","MDB":"PVVNL","MDN":"PVVNL","MNB":"PVVNL","MORADABAD":"PVVNL","MOZ":"PVVNL","MRT":"PVVNL","MUD":"PVVNL","MWN":"PVVNL","MZR":"PVVNL","NBD":"PVVNL","NDA":"PVVNL","NGN":"PVVNL","NPR":"PVVNL","NTR":"PVVNL","PLK":"PVVNL","RMP":"PVVNL","SBD":"PVVNL","SDN":"PVVNL","SEO":"PVVNL","SKR":"PVVNL","SKT":"PVVNL","SMB":"PVVNL","SML":"PVVNL","SNA":"PVVNL","SRP":"PVVNL","TBW":"PVVNL","TKD":"PVVNL","ALD":"PuVVNL","AZM":"PuVVNL","BDI":"PuVVNL","BHA":"PuVVNL","BHD":"PuVVNL","BHP":"PuVVNL","BLA":"PuVVNL","BLI":"PuVVNL","BNS":"PuVVNL","BPH":"PuVVNL","BRJ":"PuVVNL","BSI":"PuVVNL","BST":"PuVVNL","DEO":"PuVVNL","DEOS":"PuVVNL","FTP":"PuVVNL","GHI":"PuVVNL","GHO":"PuVVNL","GKP":"PuVVNL","GPN":"PuVVNL","GSI":"PuVVNL","GZP":"PuVVNL","HAN":"PuVVNL","JNP":"PuVVNL","JNU":"PuVVNL","KGN":"PuVVNL","KLD":"PuVVNL","KUS":"PuVVNL","LAL":"PuVVNL","LLJ":"PuVVNL","MAU":"PuVVNL","MBR":"PuVVNL","MGS":"PuVVNL","MHRJ":"PuVVNL","MRZ":"PuVVNL","MZP":"PuVVNL","NRT":"PuVVNL","NTA":"PuVVNL","OBRA":"PuVVNL","PAD":"PuVVNL","PBH":"PuVVNL","PDN":"PuVVNL","PGH":"PuVVNL","RBT":"PuVVNL","RKT":"PuVVNL","RPR":"PuVVNL","SDDN":"PuVVNL","SON":"PuVVNL","VRN":"PuVVNL"};
             const HOST_CONFLICTING_PREFIX={"ALG":["PuVVNL","DVVNL","MVVNL"],"ATL":["PuVVNL","DVVNL"],"AUR":["DVVNL","MVVNL"],"BND":["DVVNL","MVVNL"],"CBM":["DVVNL","MVVNL"],"ETW":["DVVNL","MVVNL"],"FZB":["DVVNL","MVVNL"],"HMP":["DVVNL","MVVNL"],"JHS":["DVVNL","MVVNL"],"KNJ":["DVVNL","MVVNL"],"MPI":["DVVNL","MVVNL"],"MTH":["DVVNL","MVVNL"],"ORI":["PuVVNL","DVVNL","MVVNL"],"SDR":["PuVVNL","DVVNL"],"BPR":["PuVVNL","MVVNL"],"DRI":["PVVNL","MVVNL"],"MMB":["PuVVNL","MVVNL"],"PPR":["PuVVNL","MVVNL"],"RAT":["DVVNL","MVVNL"],"SHD":["PVVNL","MVVNL"],"SPR":["PVVNL","PuVVNL","MVVNL"],"TND":["PVVNL","MVVNL"],"BJO":["PVVNL","PuVVNL"],"BLR":["PVVNL","MVVNL"],"BTU":["PVVNL","MVVNL"],"CHN":["PVVNL","PuVVNL"],"CPR":["PVVNL","MVVNL"],"DBD":["PVVNL","PuVVNL"],"GGH":["PVVNL","MVVNL"],"GJL":["PVVNL","PuVVNL"],"GMR":["PVVNL","MVVNL"],"GZB":["PVVNL","MVVNL"],"HPR":["PVVNL","MVVNL"],"HPU":["PVVNL","PuVVNL","MVVNL"],"KAT":["PVVNL","PuVVNL"],"KND":["PVVNL","PuVVNL"],"MDB":["PVVNL","PuVVNL","MVVNL"],"MDN":["PVVNL","PuVVNL"],"MNB":["PVVNL","PuVVNL","MVVNL"],"MOZ":["PVVNL","PuVVNL"],"MRT":["PVVNL","MVVNL"],"NPR":["PVVNL","PuVVNL"],"NTR":["PVVNL","PuVVNL"],"SBD":["PVVNL","MVVNL"],"SDN":["PVVNL","PuVVNL"],"SKR":["PVVNL","MVVNL"],"SRP":["PVVNL","MVVNL"],"ALD":["PuVVNL","DVVNL","MVVNL"],"BLI":["PVVNL","PuVVNL"],"BST":["PuVVNL","MVVNL"],"DEO":["PVVNL","PuVVNL"],"FTP":["PuVVNL","DVVNL"],"JNP":["PuVVNL","MVVNL"],"MGS":["PuVVNL","MVVNL"],"MRZ":["PVVNL","PuVVNL"],"PDN":["PuVVNL","MVVNL"],"VRN":["PuVVNL","MVVNL"]};
 
+            // Majority DISCOM for each hostname prefix, derived from the uploaded
+            // DISCOM-wise domain hostname inventory. For ambiguous prefixes, the
+            // DISCOM with the highest number of appearances is selected.
+            const HOST_PREFIX_MAJORITY = {"ABP":"MVVNL","AGR":"DVVNL","AKB":"MVVNL","ALD":"PuVVNL","ALG":"DVVNL","AMR":"PVVNL","ANL":"MVVNL","ATL":"DVVNL","ATR":"DVVNL","AUR":"DVVNL","AZM":"PuVVNL","BAH":"MVVNL","BAR":"MVVNL","BDI":"PuVVNL","BDK":"MVVNL","BDN":"PVVNL","BE":"MVVNL","BGM":"MVVNL","BHA":"PuVVNL","BHD":"PuVVNL","BHJ":"PVVNL","BHP":"PuVVNL","BJO":"PVVNL","BLA":"PuVVNL","BLI":"PuVVNL","BLR":"PVVNL","BND":"DVVNL","BNS":"PuVVNL","BNT":"DVVNL","BPH":"PuVVNL","BPR":"MVVNL","BPT":"PVVNL","BRJ":"PuVVNL","BRP":"MVVNL","BSI":"PuVVNL","BSP":"PVVNL","BSR":"PVVNL","BST":"PuVVNL","BTN":"DVVNL","BTU":"PVVNL","BUD":"MVVNL","BWN":"MVVNL","CBM":"DVVNL","CHN":"PVVNL","CKD":"DVVNL","CPR":"PVVNL","DBD":"PVVNL","DBI":"PVVNL","DEO":"PuVVNL","DEOS":"PuVVNL","DPR":"PVVNL","DRI":"MVVNL","ETH":"DVVNL","ETW":"DVVNL","FBD":"MVVNL","FKB":"DVVNL","FPR":"MVVNL","FTP":"PuVVNL","FZB":"DVVNL","FZD":"DVVNL","GGH":"PVVNL","GGT":"MVVNL","GHI":"PuVVNL","GHO":"PuVVNL","GHT":"DVVNL","GJL":"PVVNL","GJR":"PVVNL","GKP":"PuVVNL","GLH":"PVVNL","GMR":"PVVNL","GND":"DVVNL","GOL":"MVVNL","GON":"MVVNL","GPN":"PuVVNL","GSG":"DVVNL","GSI":"PuVVNL","GUJ":"DVVNL","GZB":"PVVNL","GZP":"PuVVNL","HAN":"PuVVNL","HAST":"PVVNL","HMP":"DVVNL","HPL":"PVVNL","HPR":"PVVNL","HPU":"PVVNL","HRD":"MVVNL","HRS":"DVVNL","HTP":"DVVNL","JBD":"PVVNL","JHS":"DVVNL","JLBD":"MVVNL","JLN":"DVVNL","JNP":"PuVVNL","JNU":"PuVVNL","JSR":"DVVNL","KAT":"PVVNL","KBD":"MVVNL","KCH":"DVVNL","KGN":"PuVVNL","KHR":"PVVNL","KIP":"PVVNL","KKL":"DVVNL","KKR":"MVVNL","KLD":"PuVVNL","KLN":"MVVNL","KLP":"DVVNL","KMJ":"DVVNL","KND":"PVVNL","KNJ":"DVVNL","KRB":"MVVNL","KRJ":"PVVNL","KRN":"PVVNL","KSJ":"DVVNL","KUS":"PuVVNL","LAL":"PuVVNL","LHP":"MVVNL","LK0":"MVVNL","LKO":"MVVNL","LKP":"MVVNL","LLJ":"PuVVNL","LON":"PVVNL","LPR":"DVVNL","MAH":"DVVNL","MAT":"DVVNL","MAU":"PuVVNL","MBD":"PVVNL","MBR":"PuVVNL","MDB":"PVVNL","MDH":"DVVNL","MDI":"MVVNL","MDN":"PVVNL","MGS":"PuVVNL","MHRJ":"PuVVNL","MLW":"MVVNL","MMB":"MVVNL","MNB":"PVVNL","MORADABAD":"PVVNL","MOZ":"PVVNL","MPI":"DVVNL","MPR":"DVVNL","MRP":"DVVNL","MRT":"PVVNL","MRZ":"PuVVNL","MTH":"DVVNL","MUD":"PVVNL","MVVNL":"MVVNL","MWN":"PVVNL","MZP":"PuVVNL","MZR":"PVVNL","NAN":"MVVNL","NBD":"PVVNL","NDA":"PVVNL","NGN":"PVVNL","NPR":"PVVNL","NRT":"PuVVNL","NTA":"PuVVNL","NTR":"PVVNL","NWB":"MVVNL","NWG":"MVVNL","NWH":"MVVNL","OBRA":"PuVVNL","ORI":"DVVNL","PAD":"PuVVNL","PAL":"MVVNL","PBH":"PuVVNL","PBT":"MVVNL","PDN":"PuVVNL","PGH":"PuVVNL","PLK":"PVVNL","PPR":"MVVNL","RAB":"MVVNL","RAT":"MVVNL","RBT":"PuVVNL","RKT":"PuVVNL","RMP":"PVVNL","RPR":"PuVVNL","RUD":"MVVNL","SAN":"MVVNL","SBD":"PVVNL","SDB":"DVVNL","SDDN":"PuVVNL","SDN":"PVVNL","SDR":"DVVNL","SEO":"PVVNL","SGJ":"DVVNL","SHD":"MVVNL","SJP":"MVVNL","SKB":"DVVNL","SKR":"PVVNL","SKT":"PVVNL","SMB":"PVVNL","SML":"PVVNL","SNA":"PVVNL","SON":"PuVVNL","SPR":"MVVNL","SRP":"PVVNL","SWN":"MVVNL","TBW":"PVVNL","TDL":"DVVNL","TIH":"MVVNL","TKD":"PVVNL","TND":"MVVNL","UJH":"MVVNL","UNM":"MVVNL","VDV":"DVVNL","VRN":"PuVVNL","ZDP":"MVVNL"};
+
             function mapHostnameToDiscom(hostname) {
                 const n = String(hostname ?? "").trim().toUpperCase();
                 if (!n) return null;
                 const parts = n.split("-");
                 const prefix = parts[0] || "";
                 if (HOST_EXACT[n]) return HOST_EXACT[n];
-                if (parts.length >= 2) {
-                    const pairKey = parts[0] + "|" + parts[1];
-                    if (HOST_PAIR[pairKey]) return HOST_PAIR[pairKey];
-                }
-                for (const token of n.split(/[-_\s]+/)) {
+
+                // Explicit DISCOM names in the hostname take precedence.
+                for (const token of n.split(/[-_\\s]+/)) {
                     const marker = token.replace(/[^A-Z]/g, "");
                     if (["PVVNL", "PUVVNL", "DVVNL", "MVVNL"].includes(marker)) {
                         return marker === "PUVVNL" ? "PuVVNL" : marker;
                     }
                 }
+
+                // Prefix majority takes precedence over individual prefix-pair
+                // fallbacks. Example: MRT maps to PVVNL (328), not MVVNL (1).
+                if (HOST_PREFIX_MAJORITY[prefix]) return HOST_PREFIX_MAJORITY[prefix];
+
+                if (parts.length >= 2) {
+                    const pairKey = parts[0] + "|" + parts[1];
+                    if (HOST_PAIR[pairKey]) return HOST_PAIR[pairKey];
+                }
                 return HOST_DOMINANT_PREFIX[prefix] || HOST_PREFIX[prefix] || null;
             }
 
             function domainTypeFromRelay(value) {
-                return /^relay\d{1,2}\.uppclonline\.com:52322$/i.test(String(value ?? "").trim())
+                // Any Relay value containing uppclonline.com identifies a domain system;
+                // supports relay1/relay2 and future relay hostnames/port variations.
+                return /uppclonline\.com/i.test(String(value ?? "").trim())
                     ? "DOMAIN" : "NON_DOMAIN";
             }
 
@@ -17991,7 +18030,10 @@
                     const domainType = domainTypeFromRelay(relayValue);
                     const hostnameDiscom = domainType === "DOMAIN" ? mapHostnameToDiscom(n) : null;
                     const mappedDc = hostnameDiscom ? internalDiscomCode(hostnameDiscom) : null;
-                    if (domainType === "DOMAIN" && mappedDc) {
+                    // Preserve explicit HQ classifications from specialNames().
+                    // Relay/domain mapping must not move HQ devices into another DISCOM's
+                    // zone/Other-office totals.
+                    if (domainType === "DOMAIN" && mappedDc && c.tier !== "B") {
                         c.dc = mappedDc;
                         c.reason = (c.reason ? c.reason + "; " : "") + "Domain hostname mapped to " + hostnameDiscom;
                     }

@@ -19378,6 +19378,25 @@
             }
             ;
 
+            // PDF-only consolidation: identical zone names are combined across zone codes.
+            // Roman-numeral suffixes (I, II, III, etc.) remain part of the name and are never stripped.
+            function mergeZoneNamesForPdf(zones, countForZone) {
+                const byName = new Map();
+                (zones || []).forEach(z => {
+                    const key = String(z.zone || "").trim().replace(/\\s+/g, " ").toLocaleUpperCase();
+                    if (!key) return;
+                    const count = countForZone(z);
+                    const item = byName.get(key) || { zone: z.zone, count: 0, labelCount: -1 };
+                    item.count += count;
+                    if (count > item.labelCount) {
+                        item.zone = z.zone;
+                        item.labelCount = count;
+                    }
+                    byName.set(key, item);
+                });
+                return Array.from(byName.values());
+            }
+
             function generatePdfReport() {
                 const dcOrder = ["DV", "PV", "MV", "PU", "KE"];
                 const unmatched = rows.filter(r => !r.dc).length;
@@ -19390,11 +19409,15 @@
                         grouped[z.prefix].push(z);
                 }
                 );
+                const pdfGrouped = {};
+                dcOrder.forEach(dc => {
+                    pdfGrouped[dc] = mergeZoneNamesForPdf(grouped[dc] || [], z => zoneCountFor(dc, z));
+                });
 
                 // Count rows of actual table content to decide column layout / font size
                 let zoneRowCount = 0;
                 dcOrder.forEach(dc => {
-                    zoneRowCount += (grouped[dc] || []).length + 2;
+                    zoneRowCount += (pdfGrouped[dc] || []).length + 2;
                 }
                 );
                 // +2 for HQ&Other row + Discom Total row
@@ -19423,7 +19446,7 @@
                 let overallTotal = 0;
 
                 const blocks = dcOrder.map(dc => {
-                    const dcZones = grouped[dc] || [];
+                    const dcZones = pdfGrouped[dc] || [];
                     const direct = rows.filter(r => r.dc === dc).length;
                     if (!direct && !dcZones.length)
                         return "";
@@ -19433,8 +19456,7 @@
 
                     let zoneRows = "";
                     dcZones.forEach(z => {
-                        const n = zoneCountFor(dc, z);
-                        zoneRows += '<tr><td class="zc">' + esc(z.zone) + '</td><td class="nn">' + n.toLocaleString() + '</td></tr>';
+                        zoneRows += '<tr><td class="zc">' + esc(z.zone) + '</td><td class="nn">' + z.count.toLocaleString() + '</td></tr>';
                     }
                     );
                     zoneRows += '<tr class="sub"><td class="zc">HQ &amp; Other offices</td><td class="nn">' + (hq + other).toLocaleString() + '</td></tr>';
@@ -19495,13 +19517,19 @@
                         grouped[z.prefix].push(z);
                 }
                 );
+                const pdfGrouped = {};
+                dcOrder.forEach(dc => {
+                    pdfGrouped[dc] = mergeZoneNamesForPdf(grouped[dc] || [], z =>
+                        getAdjustedZoneCount("prev", prevRows, dc, z) + getAdjustedZoneCount("curr", currRows, dc, z)
+                    );
+                });
 
                 // Count rows of actual table content to decide column layout / font size.
                 // The comparative table carries three number columns (Prev / Curr / Δ)
                 // instead of one, so it needs a bit more horizontal room per row.
                 let zoneRowCount = 0;
                 dcOrder.forEach(dc => {
-                    zoneRowCount += (grouped[dc] || []).length + 2;
+                    zoneRowCount += (pdfGrouped[dc] || []).length + 2;
                 }
                 );
                 if (prevUppclHQ || currUppclHQ)
@@ -19531,6 +19559,7 @@
 
                 const blocks = dcOrder.map(dc => {
                     const dcZones = grouped[dc] || [];
+                    const pdfZones = pdfGrouped[dc] || [];
                     const prevDirect = getAdjustedDiscomCount("prev", prevRows, dc, dcZones);
                     const currDirect = getAdjustedDiscomCount("curr", currRows, dc, dcZones);
                     if (!prevDirect && !currDirect && !dcZones.length)
@@ -19543,9 +19572,10 @@
                     currOverallTotal += currDirect;
 
                     let zoneRows = "";
-                    dcZones.forEach(z => {
-                        const pn = getAdjustedZoneCount("prev", prevRows, dc, z);
-                        const cn = getAdjustedZoneCount("curr", currRows, dc, z);
+                    pdfZones.forEach(z => {
+                        const sameNameZones = dcZones.filter(raw => String(raw.zone || "").trim().replace(/\\s+/g, " ").toLocaleUpperCase() === String(z.zone || "").trim().replace(/\\s+/g, " ").toLocaleUpperCase());
+                        const pn = sameNameZones.reduce((sum, raw) => sum + getAdjustedZoneCount("prev", prevRows, dc, raw), 0);
+                        const cn = sameNameZones.reduce((sum, raw) => sum + getAdjustedZoneCount("curr", currRows, dc, raw), 0);
                         zoneRows += '<tr><td class="zc">' + esc(z.zone) + '</td><td class="nn">' + pn.toLocaleString() + '</td><td class="nn">' + cn.toLocaleString() + '</td><td class="nn">' + fmtDelta(cn - pn) + '</td></tr>';
                     }
                     );
